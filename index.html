@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>小卡收藏紀錄冊 - Photocard Vault</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 6 圖示庫 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* 隱藏滾動條但保持滑動 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 小卡標準比例 (54x85) */
+    .aspect-photocard { aspect-ratio: 54 / 85; }
+    .touch-scroll { -webkit-overflow-scrolling: touch; }
+    /* 編輯標籤模式時的輕微動態回饋 */
+    @keyframes subtle-shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-1.2deg); }
+      75% { transform: rotate(1.2deg); }
+    }
+    .tag-shaking {
+      animation: subtle-shake 0.28s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-28 selection:bg-purple-200">
+
+  <!-- 頂部導覽列 -->
+  <header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200 px-4 py-3 shadow-sm">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-purple-200">
+          <i class="fa-solid fa-layer-group text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-base sm:text-lg leading-tight text-slate-800">小卡收藏冊</h1>
+          <p class="text-[11px] text-slate-400">Photocard Collection</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btnExportData" type="button" class="px-2.5 sm:px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5" title="匯出備份">
+          <i class="fa-solid fa-download text-emerald-600"></i>
+          <span class="hidden sm:inline">備份</span>
+        </button>
+        <label class="px-2.5 sm:px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5" title="還原備份">
+          <i class="fa-solid fa-upload text-blue-600"></i>
+          <span class="hidden sm:inline">還原</span>
+          <input type="file" id="inputImportBackup" accept=".json" class="hidden">
+        </label>
+        <!-- 電腦端新增小卡按鈕 -->
+        <button id="btnOpenAddModal" type="button" class="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-pink-500 hover:opacity-95 text-white px-4 py-2 rounded-lg font-medium text-xs shadow-md shadow-purple-200 transition-all">
+          <i class="fa-solid fa-plus"></i> 新增小卡
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要內容區 -->
+  <main class="max-w-6xl mx-auto px-4 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+
+    <!-- 數據儀表板 -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+      <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-clone"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">總小卡張數</p>
+          <p id="statTotalQuantity" class="text-lg sm:text-xl font-bold text-slate-800">0 <span class="text-xs font-normal text-slate-500">張</span></p>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-images"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">小卡款式數</p>
+          <p id="statTotalCards" class="text-lg sm:text-xl font-bold text-slate-800">0 <span class="text-xs font-normal text-slate-500">款</span></p>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-coins"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">總花費估算</p>
+          <p id="statTotalCost" class="text-lg sm:text-xl font-bold text-slate-800">$0</p>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-store"></i>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-medium">主要購買通路</p>
+          <p id="statTopChannel" class="text-sm sm:text-base font-bold text-slate-800 truncate">-</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 搜尋與可即時增刪的篩選工具列 -->
+    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-4">
+      
+      <!-- 搜尋列、排序與標籤管理開關 -->
+      <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+        <div class="relative flex-1">
+          <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="searchInput" placeholder="搜尋小卡名稱、偶像/團體、通路或備註..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+        </div>
+        <div class="flex items-center justify-between sm:justify-end gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs text-slate-400 whitespace-nowrap">排序：</span>
+            <select id="sortSelect" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-purple-500">
+              <option value="newest">最新加入</option>
+              <option value="oldest">最早加入</option>
+              <option value="priceDesc">價格高到低</option>
+              <option value="priceAsc">價格低到高</option>
+              <option value="qtyDesc">數量多到少</option>
+            </select>
+          </div>
+          <!-- 標籤管理編輯模式切換按鈕 -->
+          <button type="button" id="btnToggleTagEditMode" onclick="toggleTagEditMode()" class="px-3 py-2 text-xs rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1 transition-all">
+            <i class="fa-solid fa-pen text-slate-400"></i>
+            <span id="tagEditModeText">編輯標籤</span>
+          </button>
+        </div>
+      </div>
+
+      <hr class="border-slate-100">
+
+      <!-- 1. 通路篩選列 (完整保留所有原始選項 + 即時新增/刪除) -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
+          <i class="fa-solid fa-store text-purple-500 text-[11px]"></i> 通路：
+        </span>
+        <div id="filterChannelsList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
+          <!-- 動態生成標籤 -->
+        </div>
+        <button type="button" onclick="promptAddTag('channels', '通路')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-plus text-[10px]"></i> 新增
+        </button>
+      </div>
+
+      <!-- 2. 尺寸篩選列 (完整保留所有原始規格 + 即時新增/刪除) -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
+          <i class="fa-solid fa-ruler-combined text-purple-500 text-[11px]"></i> 尺寸：
+        </span>
+        <div id="filterSizesList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
+          <!-- 動態生成標籤 -->
+        </div>
+        <button type="button" onclick="promptAddTag('sizes', '尺寸')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-plus text-[10px]"></i> 新增
+        </button>
+      </div>
+
+      <!-- 3. 類別篩選列 (完整保留所有原始類別 + 即時新增/刪除) -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
+          <i class="fa-solid fa-tag text-purple-500 text-[11px]"></i> 類別：
+        </span>
+        <div id="filterCategoriesList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
+          <!-- 動態生成標籤 -->
+        </div>
+        <button type="button" onclick="promptAddTag('categories', '類別')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-plus text-[10px]"></i> 新增
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 小卡展示牆 -->
+    <div id="cardGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+      <!-- 小卡卡片動態渲染 -->
+    </div>
+
+    <!-- 空狀態提示 -->
+    <div id="emptyState" class="hidden py-16 text-center">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-purple-50 text-purple-400 flex items-center justify-center text-2xl mb-3">
+        <i class="fa-regular fa-folder-open"></i>
+      </div>
+      <p class="text-base font-bold text-slate-700">還沒有符合條件的小卡</p>
+      <p class="text-xs text-slate-400 mt-1">點擊右下角「+」按鈕開始記錄你的第一張小卡吧！</p>
+    </div>
+  </main>
+
+  <!-- 手機端專屬懸浮「＋」新增按鈕 (FAB) -->
+  <button id="btnMobileAdd" type="button" aria-label="新增小卡" class="sm:hidden fixed right-5 bottom-6 z-40 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-purple-500/40 active:scale-95 transition-transform">
+    <i class="fa-solid fa-plus text-2xl"></i>
+  </button>
+
+  <!-- 新增/編輯小卡彈窗 (Modal) -->
+  <div id="cardModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in duration-200">
+      
+      <!-- 視窗標題 -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <h3 id="modalTitle" class="font-bold text-base text-slate-800">✨ 新增小卡紀錄</h3>
+        <button type="button" onclick="closeCardModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 表單內容 (支援手機滑動) -->
+      <form id="cardForm" class="p-5 space-y-4 overflow-y-auto touch-scroll flex-1">
+        <input type="hidden" id="editCardId" value="">
+
+        <!-- 相片上傳 / 鏡頭拍攝 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">小卡相片 / 掃描圖</label>
+          <div class="flex gap-2 mb-2">
+            <label class="flex-1 py-2 border border-dashed border-purple-300 rounded-xl bg-purple-50/50 hover:bg-purple-50 text-purple-700 text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors">
+              <i class="fa-solid fa-upload"></i> 相簿 / 上傳
+              <input type="file" id="fileImageInput" accept="image/*" class="hidden">
+            </label>
+            <button type="button" id="btnToggleCamera" class="flex-1 py-2 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+              <i class="fa-solid fa-camera"></i> 開啟相機
+            </button>
+          </div>
+
+          <!-- 即時相機取景區 -->
+          <div id="cameraBox" class="hidden relative rounded-xl overflow-hidden bg-black mb-2">
+            <video id="cameraVideo" autoplay playsinline class="w-full h-52 object-cover"></video>
+            <!-- 54x85 標準框引導 -->
+            <div class="absolute inset-0 border-2 border-dashed border-purple-400 pointer-events-none rounded-lg m-4"></div>
+            <div class="absolute bottom-2 inset-x-0 flex justify-center gap-2">
+              <button type="button" id="btnCapturePhoto" class="px-4 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium shadow-md shadow-purple-600/40">
+                <i class="fa-solid fa-camera-retro"></i> 拍照裁切
+              </button>
+              <button type="button" onclick="stopCamera()" class="px-3 py-1.5 bg-slate-700/80 text-white rounded-full text-xs">取消</button>
+            </div>
+          </div>
+
+          <!-- 網路圖片網址 -->
+          <div class="mb-2">
+            <input type="url" id="imageUrlInput" placeholder="或貼上網路圖片網址 (https://...)" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-purple-500">
+          </div>
+
+          <!-- 圖片預覽 -->
+          <div class="flex items-center justify-center">
+            <div id="imagePreviewContainer" class="w-24 aspect-photocard rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden relative shadow-sm">
+              <i class="fa-regular fa-image text-slate-300 text-2xl" id="emptyPreviewIcon"></i>
+              <img id="previewImg" src="" alt="預覽" class="hidden w-full h-full object-cover">
+            </div>
+          </div>
+        </div>
+
+        <!-- 小卡名稱與偶像成員 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">小卡名稱 <span class="text-rose-500">*</span></label>
+            <input type="text" id="cardNameInput" required placeholder="如：首發簽售卡" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">偶像 / 團體</label>
+            <input type="text" id="memberInput" placeholder="如：Karina / aespa" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+          </div>
+        </div>
+
+        <!-- 通路 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">購買通路</label>
+          <div class="flex gap-2">
+            <select id="channelSelect" class="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+              <!-- 動態生成 -->
+            </select>
+            <input type="text" id="channelCustomInput" placeholder="或手動輸入新通路..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+          </div>
+        </div>
+
+        <!-- 尺寸與類別 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">尺寸規格</label>
+            <select id="sizeSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+              <!-- 動態生成 -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">小卡類別</label>
+            <select id="categorySelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+              <!-- 動態生成 -->
+            </select>
+          </div>
+        </div>
+
+        <!-- 數量與單價 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">收藏張數</label>
+            <input type="number" id="quantityInput" min="1" value="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">入手單價 (NT$)</label>
+            <input type="number" id="priceInput" min="0" placeholder="0" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+          </div>
+        </div>
+
+        <!-- 備註說明 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">備註 / 卡況說明</label>
+          <input type="text" id="notesInput" placeholder="如：無損、背面有廠損微痕..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+        </div>
+
+        <!-- 表單底部按鈕 -->
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeCardModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium text-xs hover:bg-slate-50">取消</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white font-medium text-xs shadow-md shadow-purple-200">確認儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript 核心程式碼 -->
+  <script>
+    // --- 完整保留所有原始預設標籤 ---
+    const DEFAULT_TAGS = {
+      channels: [
+        '代購', 
+        '快閃店直購', 
+        'FB社團', 
+        '官方線上預購', 
+        '二手平台', 
+        '實體唱片行', 
+        'Mercari/日拍',
+        '線下交換',
+        '親友贈送'
+      ],
+      sizes: [
+        '標準小卡 (54×85)', 
+        '大卡 / 明信片', 
+        '拍立得 (Polaroid)', 
+        '人生四格', 
+        '迷你卡 (Mini)',
+        '透卡 / PVC',
+        '書籤卡 / 特殊型'
+      ],
+      categories: [
+        '專輯卡', 
+        '通路特典', 
+        '快閃週邊', 
+        '簽售專屬', 
+        '應援物',
+        '會員禮',
+        '演唱會限定'
+      ]
+    };
+
+    // 讀取本地儲存的標籤，若有新增或修改過則保留，否則使用完整預設
+    let tagsData = JSON.parse(localStorage.getItem('photocard_tags')) || DEFAULT_TAGS;
+
+    // 確保原本所有的預設標籤都被保留在清單中（合併舊資料與完整預設庫）
+    Object.keys(DEFAULT_TAGS).forEach(key => {
+      DEFAULT_TAGS[key].forEach(item => {
+        if (!tagsData[key].includes(item)) {
+          tagsData[key].push(item);
+        }
+      });
+    });
+
+    let isTagEditMode = false; // 是否處於「標籤編輯/刪除模式」
+
+    // 篩選與排序狀態
+    let currentFilter = {
+      search: '',
+      channel: 'ALL',
+      size: 'ALL',
+      category: 'ALL',
+      sort: 'newest'
+    };
+
+    let cardsList = [];
+    let currentImageBase64 = '';
+    let mediaStream = null;
+
+    // --- IndexedDB 本地資料庫 ---
+    const DB_NAME = 'PhotocardVaultDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'cards';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function dbGetAllCards() {
+      const db = await openDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+      });
+    }
+
+    async function dbSaveCard(card) {
+      const db = await openDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(card);
+        tx.oncomplete = () => resolve();
+      });
+    }
+
+    async function dbDeleteCard(id) {
+      const db = await openDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = () => resolve();
+      });
+    }
+
+    // --- 儲存並同步更新所有標籤介面 ---
+    function saveTagsData() {
+      localStorage.setItem('photocard_tags', JSON.stringify(tagsData));
+      renderTagFilters();
+      renderModalSelects();
+    }
+
+    // --- 切換標籤管理/刪除模式 ---
+    window.toggleTagEditMode = function() {
+      isTagEditMode = !isTagEditMode;
+      const btn = document.getElementById('btnToggleTagEditMode');
+      const text = document.getElementById('tagEditModeText');
+      if (isTagEditMode) {
+        btn.classList.add('bg-rose-50', 'border-rose-300', 'text-rose-600');
+        btn.classList.remove('text-slate-600');
+        text.textContent = '完成編輯';
+      } else {
+        btn.classList.remove('bg-rose-50', 'border-rose-300', 'text-rose-600');
+        btn.classList.add('text-slate-600');
+        text.textContent = '編輯標籤';
+      }
+      renderTagFilters();
+    };
+
+    // --- 即時新增標籤 (彈出快速輸入框) ---
+    window.promptAddTag = function(key, labelName) {
+      const val = prompt(`請輸入要新增的「${labelName}」名稱：`);
+      if (val && val.trim()) {
+        const cleanVal = val.trim();
+        if (tagsData[key].includes(cleanVal)) {
+          alert('該標籤已經存在囉！');
+          return;
+        }
+        tagsData[key].push(cleanVal);
+        saveTagsData();
+      }
+    };
+
+    // --- 即時刪除標籤 ---
+    window.deleteTag = function(key, val, event) {
+      if (event) event.stopPropagation(); // 避免點擊刪除觸發篩選
+      if (confirm(`確定要刪除「${val}」標籤嗎？`)) {
+        tagsData[key] = tagsData[key].filter(item => item !== val);
+        // 如果當前篩選剛好是該標籤，重設為全部
+        if (key === 'channels' && currentFilter.channel === val) currentFilter.channel = 'ALL';
+        if (key === 'sizes' && currentFilter.size === val) currentFilter.size = 'ALL';
+        if (key === 'categories' && currentFilter.category === val) currentFilter.category = 'ALL';
+        saveTagsData();
+        renderCards();
+      }
+    };
+
+    // --- 渲染自定義標籤列（支援就地刪除與點選篩選） ---
+    function renderTagFilters() {
+      const buildTagBtn = (tagKey, val, isAll, currentActive) => {
+        const activeClass = currentActive 
+          ? 'bg-purple-600 text-white font-medium shadow-sm' 
+          : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
+        const filterType = tagKey === 'channels' ? 'channel' : (tagKey === 'sizes' ? 'size' : 'category');
+
+        if (isAll) {
+          return `
+            <button type="button" onclick="setFilter('${filterType}', 'ALL')" class="px-2.5 py-1 text-xs rounded-full whitespace-nowrap transition-all ${activeClass}">
+              ${val}
+            </button>
+          `;
+        }
+
+        return `
+          <div class="relative inline-flex items-center group shrink-0 ${isTagEditMode ? 'tag-shaking' : ''}">
+            <button type="button" onclick="setFilter('${filterType}', '${val}')" class="pl-2.5 ${isTagEditMode ? 'pr-6' : 'pr-2.5 group-hover:pr-6'} py-1 text-xs rounded-full whitespace-nowrap transition-all flex items-center gap-1 ${activeClass}">
+              <span>${val}</span>
+            </button>
+            <button type="button" onclick="deleteTag('${tagKey}', '${val}', event)" title="刪除標籤" class="${isTagEditMode ? 'flex' : 'hidden group-hover:flex'} absolute right-1.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-300 hover:bg-rose-500 text-white items-center justify-center text-[9px] transition-colors">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        `;
+      };
+
+      // 1. 通路
+      const chanContainer = document.getElementById('filterChannelsList');
+      let chanHtml = buildTagBtn('channels', '全部通路', true, currentFilter.channel === 'ALL');
+      tagsData.channels.forEach(ch => {
+        chanHtml += buildTagBtn('channels', ch, false, currentFilter.channel === ch);
+      });
+      chanContainer.innerHTML = chanHtml;
+
+      // 2. 尺寸
+      const sizeContainer = document.getElementById('filterSizesList');
+      let sizeHtml = buildTagBtn('sizes', '全部尺寸', true, currentFilter.size === 'ALL');
+      tagsData.sizes.forEach(sz => {
+        sizeHtml += buildTagBtn('sizes', sz, false, currentFilter.size === sz);
+      });
+      sizeContainer.innerHTML = sizeHtml;
+
+      // 3. 類別
+      const catContainer = document.getElementById('filterCategoriesList');
+      let catHtml = buildTagBtn('categories', '全部', true, currentFilter.category === 'ALL');
+      tagsData.categories.forEach(cat => {
+        catHtml += buildTagBtn('categories', cat, false, currentFilter.category === cat);
+      });
+      catContainer.innerHTML = catHtml;
+    }
+
+    window.setFilter = function(type, val) {
+      if (isTagEditMode) return; // 編輯標籤模式時暫停篩選觸發，方便專心刪除
+      currentFilter[type] = val;
+      renderTagFilters();
+      renderCards();
+    };
+
+    // --- 渲染 Modal 內的下拉選單 ---
+    function renderModalSelects() {
+      const chSel = document.getElementById('channelSelect');
+      chSel.innerHTML = '<option value="">-- 選擇常用通路 --</option>' + 
+        tagsData.channels.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      const szSel = document.getElementById('sizeSelect');
+      szSel.innerHTML = tagsData.sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+
+      const catSel = document.getElementById('categorySelect');
+      catSel.innerHTML = tagsData.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    // --- 渲染小卡展示牆 ---
+    function renderCards() {
+      const grid = document.getElementById('cardGrid');
+      const empty = document.getElementById('emptyState');
+
+      let filtered = cardsList.filter(card => {
+        const matchSearch = (card.name || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
+                            (card.member || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
+                            (card.channel || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
+                            (card.notes || '').toLowerCase().includes(currentFilter.search.toLowerCase());
+        const matchChannel = currentFilter.channel === 'ALL' || card.channel === currentFilter.channel;
+        const matchSize = currentFilter.size === 'ALL' || card.size === currentFilter.size;
+        const matchCategory = currentFilter.category === 'ALL' || card.category === currentFilter.category;
+        return matchSearch && matchChannel && matchSize && matchCategory;
+      });
+
+      // 排序
+      filtered.sort((a, b) => {
+        if (currentFilter.sort === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
+        if (currentFilter.sort === 'oldest') return (a.createdAt || 0) - (b.createdAt || 0);
+        if (currentFilter.sort === 'priceDesc') return (b.price || 0) - (a.price || 0);
+        if (currentFilter.sort === 'priceAsc') return (a.price || 0) - (b.price || 0);
+        if (currentFilter.sort === 'qtyDesc') return (b.quantity || 1) - (a.quantity || 1);
+        return 0;
+      });
+
+      // 儀表板數值統計
+      let totalQty = 0;
+      let totalCost = 0;
+      const channelCounts = {};
+
+      cardsList.forEach(c => {
+        const qty = Number(c.quantity) || 1;
+        totalQty += qty;
+        totalCost += (Number(c.price) || 0) * qty;
+        if (c.channel) channelCounts[c.channel] = (channelCounts[c.channel] || 0) + qty;
+      });
+
+      let topChannel = '-';
+      let maxCnt = 0;
+      for (const [ch, cnt] of Object.entries(channelCounts)) {
+        if (cnt > maxCnt) { maxCnt = cnt; topChannel = ch; }
+      }
+
+      document.getElementById('statTotalQuantity').innerHTML = `${totalQty} <span class="text-xs font-normal text-slate-500">張</span>`;
+      document.getElementById('statTotalCards').innerHTML = `${cardsList.length} <span class="text-xs font-normal text-slate-500">款</span>`;
+      document.getElementById('statTotalCost').textContent = `$${totalCost.toLocaleString()}`;
+      document.getElementById('statTopChannel').textContent = topChannel;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      grid.innerHTML = filtered.map(card => `
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
+          <!-- 圖片與上方數量標籤 -->
+          <div class="relative aspect-photocard bg-slate-100 overflow-hidden">
+            ${card.image ? 
+              `<img src="${card.image}" alt="${card.name}" class="w-full h-full object-cover">` : 
+              `<div class="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1"><i class="fa-regular fa-image text-3xl"></i><span class="text-[10px]">無相片</span></div>`
+            }
+            <span class="absolute top-2 left-2 bg-slate-900/70 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
+              x${card.quantity || 1}
+            </span>
+            ${card.price ? `<span class="absolute bottom-2 left-2 bg-emerald-600/85 backdrop-blur-md text-white text-[10px] font-medium px-2 py-0.5 rounded-md">$${card.price}</span>` : ''}
+          </div>
+
+          <!-- 卡片資訊與操作 -->
+          <div class="p-3 flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-1 mb-1">
+                <h4 class="font-bold text-xs sm:text-sm text-slate-800 line-clamp-1" title="${card.name}">${card.name}</h4>
+              </div>
+              <p class="text-[11px] text-purple-600 font-medium line-clamp-1 mb-2">${card.member || '未分類偶像'}</p>
+              
+              <div class="flex flex-wrap gap-1 mb-2">
+                ${card.channel ? `<span class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">${card.channel}</span>` : ''}
+                ${card.size ? `<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">${card.size}</span>` : ''}
+                ${card.category ? `<span class="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded">${card.category}</span>` : ''}
+              </div>
+            </div>
+
+            <!-- 張數快速調整與編輯/刪除 -->
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-1">
+                <button type="button" onclick="adjustQty('${card.id}', -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">-</button>
+                <span class="text-xs font-semibold px-1">${card.quantity || 1}</span>
+                <button type="button" onclick="adjustQty('${card.id}', 1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">+</button>
+              </div>
+              <div class="flex items-center gap-2 text-slate-400">
+                <button type="button" onclick="editCard('${card.id}')" class="hover:text-purple-600"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button type="button" onclick="deleteCard('${card.id}')" class="hover:text-rose-500"><i class="fa-solid fa-trash-can"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // --- 增減張數快捷鍵 ---
+    window.adjustQty = async function(id, delta) {
+      const card = cardsList.find(c => c.id === id);
+      if (!card) return;
+      card.quantity = Math.max(1, (card.quantity || 1) + delta);
+      await dbSaveCard(card);
+      renderCards();
+    };
+
+    // --- 刪除小卡 ---
+    window.deleteCard = async function(id) {
+      if (confirm('確定要刪除這張小卡紀錄嗎？')) {
+        await dbDeleteCard(id);
+        cardsList = cardsList.filter(c => c.id !== id);
+        renderCards();
+      }
+    };
+
+    // --- 編輯小卡 ---
+    window.editCard = function(id) {
+      const card = cardsList.find(c => c.id === id);
+      if (!card) return;
+      document.getElementById('editCardId').value = card.id;
+      document.getElementById('modalTitle').textContent = '✏️ 編輯小卡紀錄';
+      document.getElementById('cardNameInput').value = card.name || '';
+      document.getElementById('memberInput').value = card.member || '';
+      
+      const chSel = document.getElementById('channelSelect');
+      if ([...chSel.options].some(o => o.value === card.channel)) {
+        chSel.value = card.channel;
+        document.getElementById('channelCustomInput').value = '';
+      } else {
+        chSel.value = '';
+        document.getElementById('channelCustomInput').value = card.channel || '';
+      }
+
+      document.getElementById('sizeSelect').value = card.size || tagsData.sizes[0];
+      document.getElementById('categorySelect').value = card.category || tagsData.categories[0];
+      document.getElementById('quantityInput').value = card.quantity || 1;
+      document.getElementById('priceInput').value = card.price || '';
+      document.getElementById('notesInput').value = card.notes || '';
+
+      currentImageBase64 = card.image || '';
+      updatePreview(currentImageBase64);
+      openCardModal();
+    };
+
+    // --- 開啟 / 關閉 Modal ---
+    window.openCardModal = function() {
+      const modal = document.getElementById('cardModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeCardModal = function() {
+      const modal = document.getElementById('cardModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      stopCamera();
+      document.getElementById('cardForm').reset();
+      document.getElementById('editCardId').value = '';
+      document.getElementById('modalTitle').textContent = '✨ 新增小卡紀錄';
+      currentImageBase64 = '';
+      updatePreview('');
+    };
+
+    // --- 圖片預覽輔助 ---
+    function updatePreview(url) {
+      const previewImg = document.getElementById('previewImg');
+      const emptyIcon = document.getElementById('emptyPreviewIcon');
+      if (url) {
+        previewImg.src = url;
+        previewImg.classList.remove('hidden');
+        emptyIcon.classList.add('hidden');
+      } else {
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        emptyIcon.classList.remove('hidden');
+      }
+    }
+
+    // --- 相機開啟與拍照截圖 ---
+    const btnToggleCamera = document.getElementById('btnToggleCamera');
+    const cameraBox = document.getElementById('cameraBox');
+    const video = document.getElementById('cameraVideo');
+
+    btnToggleCamera.addEventListener('click', async () => {
+      if (mediaStream) {
+        stopCamera();
+        return;
+      }
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        video.srcObject = mediaStream;
+        cameraBox.classList.remove('hidden');
+        btnToggleCamera.innerHTML = '<i class="fa-solid fa-stop"></i> 關閉鏡頭';
+      } catch (err) {
+        alert('無法啟動相機，請檢查瀏覽器相機授權。');
+      }
+    });
+
+    window.stopCamera = function() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+      cameraBox.classList.add('hidden');
+      btnToggleCamera.innerHTML = '<i class="fa-solid fa-camera"></i> 開啟相機';
+    };
+
+    document.getElementById('btnCapturePhoto').addEventListener('click', () => {
+      if (!mediaStream) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 432;  // 54 * 8
+      canvas.height = 680; // 85 * 8
+      const ctx = canvas.getContext('2d');
+      const vRatio = video.videoWidth / video.videoHeight;
+      const cRatio = canvas.width / canvas.height;
+      let sx, sy, sw, sh;
+      if (vRatio > cRatio) {
+        sh = video.videoHeight;
+        sw = sh * cRatio;
+        sx = (video.videoWidth - sw) / 2;
+        sy = 0;
+      } else {
+        sw = video.videoWidth;
+        sh = sw / cRatio;
+        sx = 0;
+        sy = (video.videoHeight - sh) / 2;
+      }
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      currentImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      updatePreview(currentImageBase64);
+      stopCamera();
+    });
+
+    // --- 本地上傳圖片壓縮 ---
+    document.getElementById('fileImageInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          currentImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+          updatePreview(currentImageBase64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // --- 網路圖片網址輸入 ---
+    document.getElementById('imageUrlInput').addEventListener('input', (e) => {
+      const url = e.target.value.trim();
+      if (url) {
+        currentImageBase64 = url;
+        updatePreview(url);
+      }
+    });
+
+    // --- 儲存小卡表單 ---
+    document.getElementById('cardForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('editCardId').value;
+      const customCh = document.getElementById('channelCustomInput').value.trim();
+      let chosenChannel = customCh || document.getElementById('channelSelect').value;
+
+      if (customCh && !tagsData.channels.includes(customCh)) {
+        tagsData.channels.push(customCh);
+        saveTagsData();
+      }
+
+      const cardData = {
+        id: editId || 'pc_' + Date.now(),
+        name: document.getElementById('cardNameInput').value.trim(),
+        member: document.getElementById('memberInput').value.trim(),
+        channel: chosenChannel,
+        size: document.getElementById('sizeSelect').value,
+        category: document.getElementById('categorySelect').value,
+        quantity: parseInt(document.getElementById('quantityInput').value) || 1,
+        price: parseFloat(document.getElementById('priceInput').value) || 0,
+        notes: document.getElementById('notesInput').value.trim(),
+        image: currentImageBase64,
+        createdAt: editId ? (cardsList.find(c => c.id === editId)?.createdAt || Date.now()) : Date.now()
+      };
+
+      await dbSaveCard(cardData);
+
+      if (editId) {
+        const idx = cardsList.findIndex(c => c.id === editId);
+        if (idx !== -1) cardsList[idx] = cardData;
+      } else {
+        cardsList.unshift(cardData);
+      }
+
+      closeCardModal();
+      renderCards();
+    });
+
+    // --- 備份 JSON 匯出與匯入 ---
+    document.getElementById('btnExportData').addEventListener('click', () => {
+      const exportObj = {
+        exportedAt: new Date().toISOString(),
+        tags: tagsData,
+        cards: cardsList
+      };
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `photocard_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('inputImportBackup').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          if (Array.isArray(data.cards)) {
+            for (const c of data.cards) {
+              await dbSaveCard(c);
+            }
+            if (data.tags) {
+              tagsData = data.tags;
+              saveTagsData();
+            }
+            cardsList = await dbGetAllCards();
+            renderCards();
+            alert('🎉 備份資料還原成功！');
+          } else {
+            alert('檔案格式不相符！');
+          }
+        } catch (err) {
+          alert('讀取失敗，請確認檔案是否為合法的 JSON 備份檔。');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // --- 搜尋與排序事件綁定 ---
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      currentFilter.search = e.target.value;
+      renderCards();
+    });
+
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+      currentFilter.sort = e.target.value;
+      renderCards();
+    });
+
+    // 手機端 / 電腦端開啟 Modal 按鈕事件
+    const btnMobileAdd = document.getElementById('btnMobileAdd');
+    const btnOpenAddModal = document.getElementById('btnOpenAddModal');
+
+    ['click', 'touchstart'].forEach(evt => {
+      btnMobileAdd.addEventListener(evt, (e) => { e.preventDefault(); openCardModal(); }, { passive: false });
+      btnOpenAddModal.addEventListener(evt, (e) => { e.preventDefault(); openCardModal(); }, { passive: false });
+    });
+
+    // --- 頁面初始化載入 ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      renderTagFilters();
+      renderModalSelects();
+      cardsList = await dbGetAllCards();
+      renderCards();
+    });
+  </script>
+</body>
+</html>
