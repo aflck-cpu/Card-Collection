@@ -109,7 +109,7 @@
       <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
         <div class="relative flex-1">
           <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-          <input type="text" id="searchInput" placeholder="搜尋小卡名稱、偶像/團體、通路或備註..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+          <input type="text" id="searchInput" placeholder="搜尋小卡名稱、分類、通路或備註..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
         </div>
         <div class="flex items-center justify-between sm:justify-end gap-2">
           <div class="flex items-center gap-1.5">
@@ -132,39 +132,52 @@
 
       <hr class="border-slate-100">
 
-      <!-- 1. 通路篩選列 (完整保留所有原始選項 + 即時新增/刪除) -->
+      <!-- 1. 分類篩選列 (自定義分類維度) -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
+          <i class="fa-solid fa-shapes text-purple-500 text-[11px]"></i> 分類：
+        </span>
+        <div id="filterGroupsList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
+          <!-- 動態生成分類標籤 -->
+        </div>
+        <button type="button" onclick="promptAddTag('groups', '分類')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
+          <i class="fa-solid fa-plus text-[10px]"></i> 新增
+        </button>
+      </div>
+
+      <!-- 2. 通路篩選列 -->
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
           <i class="fa-solid fa-store text-purple-500 text-[11px]"></i> 通路：
         </span>
         <div id="filterChannelsList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
-          <!-- 動態生成標籤 -->
+          <!-- 動態生成通路標籤 -->
         </div>
         <button type="button" onclick="promptAddTag('channels', '通路')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
           <i class="fa-solid fa-plus text-[10px]"></i> 新增
         </button>
       </div>
 
-      <!-- 2. 尺寸篩選列 (完整保留所有原始規格 + 即時新增/刪除) -->
+      <!-- 3. 尺寸篩選列 -->
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
           <i class="fa-solid fa-ruler-combined text-purple-500 text-[11px]"></i> 尺寸：
         </span>
         <div id="filterSizesList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
-          <!-- 動態生成標籤 -->
+          <!-- 動態生成尺寸標籤 -->
         </div>
         <button type="button" onclick="promptAddTag('sizes', '尺寸')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
           <i class="fa-solid fa-plus text-[10px]"></i> 新增
         </button>
       </div>
 
-      <!-- 3. 類別篩選列 (完整保留所有原始類別 + 即時新增/刪除) -->
+      <!-- 4. 類別篩選列 -->
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
           <i class="fa-solid fa-tag text-purple-500 text-[11px]"></i> 類別：
         </span>
         <div id="filterCategoriesList" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 touch-scroll flex-1">
-          <!-- 動態生成標籤 -->
+          <!-- 動態生成類別標籤 -->
         </div>
         <button type="button" onclick="promptAddTag('categories', '類別')" class="shrink-0 text-xs px-2.5 py-1 rounded-full border border-dashed border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium flex items-center gap-1 transition-colors">
           <i class="fa-solid fa-plus text-[10px]"></i> 新增
@@ -249,15 +262,20 @@
           </div>
         </div>
 
-        <!-- 小卡名稱與偶像成員 -->
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">小卡名稱 <span class="text-rose-500">*</span></label>
-            <input type="text" id="cardNameInput" required placeholder="如：首發簽售卡" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">偶像 / 團體</label>
-            <input type="text" id="memberInput" placeholder="如：Karina / aespa" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+        <!-- 小卡名稱 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">小卡名稱 <span class="text-rose-500">*</span></label>
+          <input type="text" id="cardNameInput" required placeholder="如：首發簽售卡、特典閃卡" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+        </div>
+
+        <!-- 分類 (原偶像/團體調整，支援選單與自訂) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">分類</label>
+          <div class="flex gap-2">
+            <select id="groupSelect" class="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+              <!-- 動態生成分類選項 -->
+            </select>
+            <input type="text" id="groupCustomInput" placeholder="或自訂新分類..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
           </div>
         </div>
 
@@ -317,8 +335,16 @@
 
   <!-- JavaScript 核心程式碼 -->
   <script>
-    // --- 完整保留所有原始預設標籤 ---
+    // --- 標籤資料庫 (包含分類、通路、尺寸、類別) ---
     const DEFAULT_TAGS = {
+      groups: [
+        'aespa',
+        'IVE',
+        'NewJeans',
+        '動漫/二次元',
+        '球員卡',
+        '插畫/原創'
+      ],
       channels: [
         '代購', 
         '快閃店直購', 
@@ -350,10 +376,13 @@
       ]
     };
 
-    // 讀取本地儲存的標籤，若有新增或修改過則保留，否則使用完整預設
     let tagsData = JSON.parse(localStorage.getItem('photocard_tags')) || DEFAULT_TAGS;
 
-    // 確保原本所有的預設標籤都被保留在清單中（合併舊資料與完整預設庫）
+    // 補齊可能缺失的分類標籤鍵值
+    if (!tagsData.groups) {
+      tagsData.groups = [...DEFAULT_TAGS.groups];
+    }
+
     Object.keys(DEFAULT_TAGS).forEach(key => {
       DEFAULT_TAGS[key].forEach(item => {
         if (!tagsData[key].includes(item)) {
@@ -362,11 +391,12 @@
       });
     });
 
-    let isTagEditMode = false; // 是否處於「標籤編輯/刪除模式」
+    let isTagEditMode = false;
 
     // 篩選與排序狀態
     let currentFilter = {
       search: '',
+      group: 'ALL',
       channel: 'ALL',
       size: 'ALL',
       category: 'ALL',
@@ -448,7 +478,7 @@
       renderTagFilters();
     };
 
-    // --- 即時新增標籤 (彈出快速輸入框) ---
+    // --- 即時新增標籤 ---
     window.promptAddTag = function(key, labelName) {
       const val = prompt(`請輸入要新增的「${labelName}」名稱：`);
       if (val && val.trim()) {
@@ -464,10 +494,10 @@
 
     // --- 即時刪除標籤 ---
     window.deleteTag = function(key, val, event) {
-      if (event) event.stopPropagation(); // 避免點擊刪除觸發篩選
+      if (event) event.stopPropagation();
       if (confirm(`確定要刪除「${val}」標籤嗎？`)) {
         tagsData[key] = tagsData[key].filter(item => item !== val);
-        // 如果當前篩選剛好是該標籤，重設為全部
+        if (key === 'groups' && currentFilter.group === val) currentFilter.group = 'ALL';
         if (key === 'channels' && currentFilter.channel === val) currentFilter.channel = 'ALL';
         if (key === 'sizes' && currentFilter.size === val) currentFilter.size = 'ALL';
         if (key === 'categories' && currentFilter.category === val) currentFilter.category = 'ALL';
@@ -476,13 +506,17 @@
       }
     };
 
-    // --- 渲染自定義標籤列（支援就地刪除與點選篩選） ---
+    // --- 渲染自定義標籤列 ---
     function renderTagFilters() {
       const buildTagBtn = (tagKey, val, isAll, currentActive) => {
         const activeClass = currentActive 
           ? 'bg-purple-600 text-white font-medium shadow-sm' 
           : 'bg-slate-100 text-slate-600 hover:bg-slate-200';
-        const filterType = tagKey === 'channels' ? 'channel' : (tagKey === 'sizes' ? 'size' : 'category');
+        
+        let filterType = 'group';
+        if (tagKey === 'channels') filterType = 'channel';
+        if (tagKey === 'sizes') filterType = 'size';
+        if (tagKey === 'categories') filterType = 'category';
 
         if (isAll) {
           return `
@@ -504,7 +538,15 @@
         `;
       };
 
-      // 1. 通路
+      // 1. 分類
+      const groupContainer = document.getElementById('filterGroupsList');
+      let groupHtml = buildTagBtn('groups', '全部分類', true, currentFilter.group === 'ALL');
+      tagsData.groups.forEach(g => {
+        groupHtml += buildTagBtn('groups', g, false, currentFilter.group === g);
+      });
+      groupContainer.innerHTML = groupHtml;
+
+      // 2. 通路
       const chanContainer = document.getElementById('filterChannelsList');
       let chanHtml = buildTagBtn('channels', '全部通路', true, currentFilter.channel === 'ALL');
       tagsData.channels.forEach(ch => {
@@ -512,7 +554,7 @@
       });
       chanContainer.innerHTML = chanHtml;
 
-      // 2. 尺寸
+      // 3. 尺寸
       const sizeContainer = document.getElementById('filterSizesList');
       let sizeHtml = buildTagBtn('sizes', '全部尺寸', true, currentFilter.size === 'ALL');
       tagsData.sizes.forEach(sz => {
@@ -520,7 +562,7 @@
       });
       sizeContainer.innerHTML = sizeHtml;
 
-      // 3. 類別
+      // 4. 類別
       const catContainer = document.getElementById('filterCategoriesList');
       let catHtml = buildTagBtn('categories', '全部', true, currentFilter.category === 'ALL');
       tagsData.categories.forEach(cat => {
@@ -530,7 +572,7 @@
     }
 
     window.setFilter = function(type, val) {
-      if (isTagEditMode) return; // 編輯標籤模式時暫停篩選觸發，方便專心刪除
+      if (isTagEditMode) return;
       currentFilter[type] = val;
       renderTagFilters();
       renderCards();
@@ -538,6 +580,10 @@
 
     // --- 渲染 Modal 內的下拉選單 ---
     function renderModalSelects() {
+      const gSel = document.getElementById('groupSelect');
+      gSel.innerHTML = '<option value="">-- 選擇常用分類 --</option>' + 
+        tagsData.groups.map(g => `<option value="${g}">${g}</option>`).join('');
+
       const chSel = document.getElementById('channelSelect');
       chSel.innerHTML = '<option value="">-- 選擇常用通路 --</option>' + 
         tagsData.channels.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -556,13 +602,14 @@
 
       let filtered = cardsList.filter(card => {
         const matchSearch = (card.name || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
-                            (card.member || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
+                            (card.group || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
                             (card.channel || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
                             (card.notes || '').toLowerCase().includes(currentFilter.search.toLowerCase());
+        const matchGroup = currentFilter.group === 'ALL' || card.group === currentFilter.group;
         const matchChannel = currentFilter.channel === 'ALL' || card.channel === currentFilter.channel;
         const matchSize = currentFilter.size === 'ALL' || card.size === currentFilter.size;
         const matchCategory = currentFilter.category === 'ALL' || card.category === currentFilter.category;
-        return matchSearch && matchChannel && matchSize && matchCategory;
+        return matchSearch && matchGroup && matchChannel && matchSize && matchCategory;
       });
 
       // 排序
@@ -575,7 +622,7 @@
         return 0;
       });
 
-      // 儀表板數值統計
+      // 統計數據計算
       let totalQty = 0;
       let totalCost = 0;
       const channelCounts = {};
@@ -625,7 +672,7 @@
               <div class="flex items-start justify-between gap-1 mb-1">
                 <h4 class="font-bold text-xs sm:text-sm text-slate-800 line-clamp-1" title="${card.name}">${card.name}</h4>
               </div>
-              <p class="text-[11px] text-purple-600 font-medium line-clamp-1 mb-2">${card.member || '未分類偶像'}</p>
+              <p class="text-[11px] text-purple-600 font-medium line-clamp-1 mb-2">${card.group || '未分類'}</p>
               
               <div class="flex flex-wrap gap-1 mb-2">
                 ${card.channel ? `<span class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">${card.channel}</span>` : ''}
@@ -676,8 +723,18 @@
       document.getElementById('editCardId').value = card.id;
       document.getElementById('modalTitle').textContent = '✏️ 編輯小卡紀錄';
       document.getElementById('cardNameInput').value = card.name || '';
-      document.getElementById('memberInput').value = card.member || '';
       
+      // 分類
+      const gSel = document.getElementById('groupSelect');
+      if ([...gSel.options].some(o => o.value === card.group)) {
+        gSel.value = card.group;
+        document.getElementById('groupCustomInput').value = '';
+      } else {
+        gSel.value = '';
+        document.getElementById('groupCustomInput').value = card.group || '';
+      }
+
+      // 通路
       const chSel = document.getElementById('channelSelect');
       if ([...chSel.options].some(o => o.value === card.channel)) {
         chSel.value = card.channel;
@@ -766,8 +823,8 @@
     document.getElementById('btnCapturePhoto').addEventListener('click', () => {
       if (!mediaStream) return;
       const canvas = document.createElement('canvas');
-      canvas.width = 432;  // 54 * 8
-      canvas.height = 680; // 85 * 8
+      canvas.width = 432;
+      canvas.height = 680;
       const ctx = canvas.getContext('2d');
       const vRatio = video.videoWidth / video.videoHeight;
       const cRatio = canvas.width / canvas.height;
@@ -830,9 +887,18 @@
     document.getElementById('cardForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const editId = document.getElementById('editCardId').value;
+      
+      // 分類自定義處理
+      const customGroup = document.getElementById('groupCustomInput').value.trim();
+      let chosenGroup = customGroup || document.getElementById('groupSelect').value;
+      if (customGroup && !tagsData.groups.includes(customGroup)) {
+        tagsData.groups.push(customGroup);
+        saveTagsData();
+      }
+
+      // 通路自定義處理
       const customCh = document.getElementById('channelCustomInput').value.trim();
       let chosenChannel = customCh || document.getElementById('channelSelect').value;
-
       if (customCh && !tagsData.channels.includes(customCh)) {
         tagsData.channels.push(customCh);
         saveTagsData();
@@ -841,7 +907,7 @@
       const cardData = {
         id: editId || 'pc_' + Date.now(),
         name: document.getElementById('cardNameInput').value.trim(),
-        member: document.getElementById('memberInput').value.trim(),
+        group: chosenGroup,
         channel: chosenChannel,
         size: document.getElementById('sizeSelect').value,
         category: document.getElementById('categorySelect').value,
