@@ -15,7 +15,7 @@
     /* 小卡標準比例 (54x85) */
     .aspect-photocard { aspect-ratio: 54 / 85; }
     .touch-scroll { -webkit-overflow-scrolling: touch; }
-    /* 編輯標籤模式時的輕微動態回饋 */
+    /* 編輯標籤模式動態 */
     @keyframes subtle-shake {
       0%, 100% { transform: rotate(0deg); }
       25% { transform: rotate(-1.2deg); }
@@ -26,7 +26,7 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-28 selection:bg-purple-200">
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-32 selection:bg-purple-200">
 
   <!-- 頂部導覽列 -->
   <header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-slate-200 px-4 py-3 shadow-sm">
@@ -105,13 +105,13 @@
     <!-- 搜尋與可即時增刪的篩選工具列 -->
     <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-4">
       
-      <!-- 搜尋列、排序與標籤管理開關 -->
+      <!-- 搜尋列、排序、標籤管理與【批次選取開關】 -->
       <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
         <div class="relative flex-1">
           <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
           <input type="text" id="searchInput" placeholder="搜尋小卡名稱、分類、通路或備註..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
         </div>
-        <div class="flex items-center justify-between sm:justify-end gap-2">
+        <div class="flex items-center justify-between sm:justify-end gap-2 flex-wrap">
           <div class="flex items-center gap-1.5">
             <span class="text-xs text-slate-400 whitespace-nowrap">排序：</span>
             <select id="sortSelect" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-purple-500">
@@ -122,6 +122,13 @@
               <option value="qtyDesc">數量多到少</option>
             </select>
           </div>
+
+          <!-- 批次選取按鈕 -->
+          <button type="button" id="btnToggleBatchMode" onclick="toggleBatchMode()" class="px-3 py-2 text-xs rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 transition-all">
+            <i class="fa-regular fa-square-check text-purple-600"></i>
+            <span id="batchModeText">批次選取</span>
+          </button>
+
           <!-- 標籤管理編輯模式切換按鈕 -->
           <button type="button" id="btnToggleTagEditMode" onclick="toggleTagEditMode()" class="px-3 py-2 text-xs rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1 transition-all">
             <i class="fa-solid fa-pen text-slate-400"></i>
@@ -130,9 +137,21 @@
         </div>
       </div>
 
+      <!-- 批次模式工具列提示 -->
+      <div id="batchActionBanner" class="hidden bg-purple-50 border border-purple-200 rounded-xl p-3 items-center justify-between gap-2 text-xs text-purple-900">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-purple-600"></i>
+          <span>已選取 <strong id="selectedCountText" class="text-purple-700 font-bold text-sm">0</strong> 張小卡</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="selectAllVisibleCards(true)" class="px-2.5 py-1 bg-white border border-purple-200 hover:bg-purple-100 rounded-lg text-purple-700 font-medium">全選</button>
+          <button type="button" onclick="selectAllVisibleCards(false)" class="px-2.5 py-1 bg-white border border-purple-200 hover:bg-purple-100 rounded-lg text-purple-700 font-medium">清除</button>
+        </div>
+      </div>
+
       <hr class="border-slate-100">
 
-      <!-- 1. 分類篩選列 (自定義分類維度) -->
+      <!-- 1. 分類篩選列 -->
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-slate-500 flex items-center gap-1 shrink-0 w-16">
           <i class="fa-solid fa-shapes text-purple-500 text-[11px]"></i> 分類：
@@ -201,10 +220,85 @@
     </div>
   </main>
 
+  <!-- 批次操作底部懸浮工具列 (當勾選卡片時浮現) -->
+  <div id="batchBottomBar" class="fixed bottom-6 inset-x-4 max-w-2xl mx-auto z-40 bg-slate-900/90 backdrop-blur-md text-white rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-2 transition-all transform translate-y-28 opacity-0 pointer-events-none">
+    <div class="flex items-center gap-2 pl-2">
+      <span class="text-xs text-slate-300">已勾選 <b id="barSelectedCount" class="text-purple-400 text-sm">0</b> 張</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="openBatchReclassifyModal()" class="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-500 hover:opacity-95 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md">
+        <i class="fa-solid fa-folder-tree"></i> 二次分類 / 批次修改
+      </button>
+      <button type="button" onclick="batchDeleteSelected()" class="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors">
+        <i class="fa-solid fa-trash-can"></i> 批次刪除
+      </button>
+      <button type="button" onclick="toggleBatchMode(false)" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center text-xs">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- 手機端專屬懸浮「＋」新增按鈕 (FAB) -->
-  <button id="btnMobileAdd" type="button" aria-label="新增小卡" class="sm:hidden fixed right-5 bottom-6 z-40 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-purple-500/40 active:scale-95 transition-transform">
+  <button id="btnMobileAdd" type="button" aria-label="新增小卡" class="sm:hidden fixed right-5 bottom-6 z-30 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-purple-500/40 active:scale-95 transition-transform">
     <i class="fa-solid fa-plus text-2xl"></i>
   </button>
+
+  <!-- 二次分類 / 批次修改彈窗 (Batch Reclassify Modal) -->
+  <div id="batchReclassifyModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-base text-slate-800"><i class="fa-solid fa-folder-tree text-purple-600 mr-1.5"></i>批次二次分類</h3>
+        <button type="button" onclick="closeBatchReclassifyModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p class="text-xs text-slate-500">將選取的 <span id="modalBatchCount" class="font-bold text-purple-600">0</span> 張小卡，批次更新為以下分類或欄位（若欄位留空則保持原值）：</p>
+
+      <div class="space-y-3">
+        <!-- 批次修改分類 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">目標分類：</label>
+          <div class="flex gap-2">
+            <select id="batchGroupSelect" class="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+              <!-- 動態生成 -->
+            </select>
+            <input type="text" id="batchGroupCustomInput" placeholder="或建立新分類..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+          </div>
+        </div>
+
+        <!-- 批次修改通路 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">目標通路 (選填)：</label>
+          <select id="batchChannelSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+            <option value="">-- 不修改通路 --</option>
+            <!-- 動態生成 -->
+          </select>
+        </div>
+
+        <!-- 批次修改尺寸 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">目標尺寸 (選填)：</label>
+          <select id="batchSizeSelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+            <option value="">-- 不修改尺寸 --</option>
+            <!-- 動態生成 -->
+          </select>
+        </div>
+
+        <!-- 批次修改類別 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">目標類別 (選填)：</label>
+          <select id="batchCategorySelect" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:border-purple-500">
+            <option value="">-- 不修改類別 --</option>
+            <!-- 動態生成 -->
+          </select>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex gap-2">
+        <button type="button" onclick="closeBatchReclassifyModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium text-xs hover:bg-slate-50">取消</button>
+        <button type="button" onclick="applyBatchReclassify()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 text-white font-medium text-xs shadow-md shadow-purple-200">確定套用分類</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 新增/編輯小卡彈窗 (Modal) -->
   <div id="cardModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-end sm:items-center justify-center p-0 sm:p-4">
@@ -218,7 +312,7 @@
         </button>
       </div>
 
-      <!-- 表單內容 (支援手機滑動) -->
+      <!-- 表單內容 -->
       <form id="cardForm" class="p-5 space-y-4 overflow-y-auto touch-scroll flex-1">
         <input type="hidden" id="editCardId" value="">
 
@@ -268,7 +362,7 @@
           <input type="text" id="cardNameInput" required placeholder="如：首發簽售卡、特典閃卡" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
         </div>
 
-        <!-- 分類 (原偶像/團體調整，支援選單與自訂) -->
+        <!-- 分類 -->
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">分類</label>
           <div class="flex gap-2">
@@ -335,7 +429,7 @@
 
   <!-- JavaScript 核心程式碼 -->
   <script>
-    // --- 標籤資料庫 (包含分類、通路、尺寸、類別) ---
+    // --- 完整保留所有原始預設標籤 ---
     const DEFAULT_TAGS = {
       groups: [
         'aespa',
@@ -378,7 +472,6 @@
 
     let tagsData = JSON.parse(localStorage.getItem('photocard_tags')) || DEFAULT_TAGS;
 
-    // 補齊可能缺失的分類標籤鍵值
     if (!tagsData.groups) {
       tagsData.groups = [...DEFAULT_TAGS.groups];
     }
@@ -392,6 +485,8 @@
     });
 
     let isTagEditMode = false;
+    let isBatchMode = false;           // 是否處於批次勾選模式
+    let selectedCardIds = new Set();    // 勾選的小卡 ID 集合
 
     // 篩選與排序狀態
     let currentFilter = {
@@ -459,6 +554,7 @@
       localStorage.setItem('photocard_tags', JSON.stringify(tagsData));
       renderTagFilters();
       renderModalSelects();
+      renderBatchSelects();
     }
 
     // --- 切換標籤管理/刪除模式 ---
@@ -595,12 +691,177 @@
       catSel.innerHTML = tagsData.categories.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
-    // --- 渲染小卡展示牆 ---
-    function renderCards() {
-      const grid = document.getElementById('cardGrid');
-      const empty = document.getElementById('emptyState');
+    // --- 批次修改彈窗的下拉選單 ---
+    function renderBatchSelects() {
+      const bgSel = document.getElementById('batchGroupSelect');
+      bgSel.innerHTML = '<option value="">-- 選擇分類 --</option>' + 
+        tagsData.groups.map(g => `<option value="${g}">${g}</option>`).join('');
 
-      let filtered = cardsList.filter(card => {
+      const bchSel = document.getElementById('batchChannelSelect');
+      bchSel.innerHTML = '<option value="">-- 不修改通路 --</option>' + 
+        tagsData.channels.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      const bszSel = document.getElementById('batchSizeSelect');
+      bszSel.innerHTML = '<option value="">-- 不修改尺寸 --</option>' + 
+        tagsData.sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+
+      const bcatSel = document.getElementById('batchCategorySelect');
+      bcatSel.innerHTML = '<option value="">-- 不修改類別 --</option>' + 
+        tagsData.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    // --- 批次選取模式開關 ---
+    window.toggleBatchMode = function(forceState) {
+      if (typeof forceState === 'boolean') {
+        isBatchMode = forceState;
+      } else {
+        isBatchMode = !isBatchMode;
+      }
+
+      const btn = document.getElementById('btnToggleBatchMode');
+      const text = document.getElementById('batchModeText');
+      const banner = document.getElementById('batchActionBanner');
+
+      if (isBatchMode) {
+        btn.classList.add('bg-purple-100', 'border-purple-300', 'text-purple-700', 'font-semibold');
+        text.textContent = '退出選取';
+        banner.classList.remove('hidden');
+        banner.classList.add('flex');
+      } else {
+        btn.classList.remove('bg-purple-100', 'border-purple-300', 'text-purple-700', 'font-semibold');
+        text.textContent = '批次選取';
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+        selectedCardIds.clear();
+      }
+
+      updateBatchUI();
+      renderCards();
+    };
+
+    // --- 單卡點擊勾選切換 ---
+    window.toggleCardSelection = function(id, event) {
+      if (!isBatchMode) return;
+      if (event) event.stopPropagation();
+
+      if (selectedCardIds.has(id)) {
+        selectedCardIds.delete(id);
+      } else {
+        selectedCardIds.add(id);
+      }
+
+      updateBatchUI();
+      renderCards();
+    };
+
+    // --- 全選 / 取消全選當前顯示的小卡 ---
+    window.selectAllVisibleCards = function(selectAll) {
+      const visibleCards = getFilteredCards();
+      if (selectAll) {
+        visibleCards.forEach(c => selectedCardIds.add(c.id));
+      } else {
+        selectedCardIds.clear();
+      }
+      updateBatchUI();
+      renderCards();
+    };
+
+    // --- 更新勾選數量與懸浮面板 ---
+    function updateBatchUI() {
+      const count = selectedCardIds.size;
+      document.getElementById('selectedCountText').textContent = count;
+      document.getElementById('barSelectedCount').textContent = count;
+
+      const bottomBar = document.getElementById('batchBottomBar');
+      if (isBatchMode && count > 0) {
+        bottomBar.classList.remove('translate-y-28', 'opacity-0', 'pointer-events-none');
+        bottomBar.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      } else {
+        bottomBar.classList.add('translate-y-28', 'opacity-0', 'pointer-events-none');
+        bottomBar.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      }
+    }
+
+    // --- 開啟批次二次分類視窗 ---
+    window.openBatchReclassifyModal = function() {
+      if (selectedCardIds.size === 0) {
+        alert('請先勾選至少一張小卡！');
+        return;
+      }
+      document.getElementById('modalBatchCount').textContent = selectedCardIds.size;
+      document.getElementById('batchGroupSelect').value = '';
+      document.getElementById('batchGroupCustomInput').value = '';
+      document.getElementById('batchChannelSelect').value = '';
+      document.getElementById('batchSizeSelect').value = '';
+      document.getElementById('batchCategorySelect').value = '';
+
+      const modal = document.getElementById('batchReclassifyModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeBatchReclassifyModal = function() {
+      const modal = document.getElementById('batchReclassifyModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    // --- 套用批次修改（二次分類）---
+    window.applyBatchReclassify = async function() {
+      const customGroup = document.getElementById('batchGroupCustomInput').value.trim();
+      let targetGroup = customGroup || document.getElementById('batchGroupSelect').value;
+      const targetChannel = document.getElementById('batchChannelSelect').value;
+      const targetSize = document.getElementById('batchSizeSelect').value;
+      const targetCategory = document.getElementById('batchCategorySelect').value;
+
+      if (!targetGroup && !targetChannel && !targetSize && !targetCategory) {
+        alert('請至少選擇或輸入一個要更新的分類或屬性！');
+        return;
+      }
+
+      // 如果有輸入新分類，收錄至分類標籤
+      if (customGroup && !tagsData.groups.includes(customGroup)) {
+        tagsData.groups.push(customGroup);
+        saveTagsData();
+      }
+
+      // 更新勾選的所有卡片
+      for (const card of cardsList) {
+        if (selectedCardIds.has(card.id)) {
+          if (targetGroup) card.group = targetGroup;
+          if (targetChannel) card.channel = targetChannel;
+          if (targetSize) card.size = targetSize;
+          if (targetCategory) card.category = targetCategory;
+          await dbSaveCard(card);
+        }
+      }
+
+      alert(`🎉 成功更新 ${selectedCardIds.size} 張小卡的分類！`);
+      selectedCardIds.clear();
+      closeBatchReclassifyModal();
+      toggleBatchMode(false);
+      renderCards();
+    };
+
+    // --- 批次刪除選取卡片 ---
+    window.batchDeleteSelected = async function() {
+      const count = selectedCardIds.size;
+      if (count === 0) return;
+
+      if (confirm(`確定要一次刪除所選取的 ${count} 張小卡嗎？刪除後無法復原。`)) {
+        for (const id of selectedCardIds) {
+          await dbDeleteCard(id);
+        }
+        cardsList = cardsList.filter(c => !selectedCardIds.has(c.id));
+        selectedCardIds.clear();
+        toggleBatchMode(false);
+        renderCards();
+      }
+    };
+
+    // --- 篩選後的卡片清單輔助 ---
+    function getFilteredCards() {
+      return cardsList.filter(card => {
         const matchSearch = (card.name || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
                             (card.group || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
                             (card.channel || '').toLowerCase().includes(currentFilter.search.toLowerCase()) ||
@@ -611,6 +872,14 @@
         const matchCategory = currentFilter.category === 'ALL' || card.category === currentFilter.category;
         return matchSearch && matchGroup && matchChannel && matchSize && matchCategory;
       });
+    }
+
+    // --- 渲染小卡展示牆 ---
+    function renderCards() {
+      const grid = document.getElementById('cardGrid');
+      const empty = document.getElementById('emptyState');
+
+      let filtered = getFilteredCards();
 
       // 排序
       filtered.sort((a, b) => {
@@ -622,7 +891,7 @@
         return 0;
       });
 
-      // 統計數據計算
+      // 儀表板數值統計
       let totalQty = 0;
       let totalCost = 0;
       const channelCounts = {};
@@ -652,50 +921,64 @@
       }
 
       empty.classList.add('hidden');
-      grid.innerHTML = filtered.map(card => `
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow">
-          <!-- 圖片與上方數量標籤 -->
-          <div class="relative aspect-photocard bg-slate-100 overflow-hidden">
-            ${card.image ? 
-              `<img src="${card.image}" alt="${card.name}" class="w-full h-full object-cover">` : 
-              `<div class="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1"><i class="fa-regular fa-image text-3xl"></i><span class="text-[10px]">無相片</span></div>`
-            }
-            <span class="absolute top-2 left-2 bg-slate-900/70 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded-full">
-              x${card.quantity || 1}
-            </span>
-            ${card.price ? `<span class="absolute bottom-2 left-2 bg-emerald-600/85 backdrop-blur-md text-white text-[10px] font-medium px-2 py-0.5 rounded-md">$${card.price}</span>` : ''}
-          </div>
+      grid.innerHTML = filtered.map(card => {
+        const isSelected = selectedCardIds.has(card.id);
 
-          <!-- 卡片資訊與操作 -->
-          <div class="p-3 flex-1 flex flex-col justify-between">
-            <div>
-              <div class="flex items-start justify-between gap-1 mb-1">
-                <h4 class="font-bold text-xs sm:text-sm text-slate-800 line-clamp-1" title="${card.name}">${card.name}</h4>
+        return `
+          <div onclick="${isBatchMode ? `toggleCardSelection('${card.id}', event)` : ''}" class="bg-white rounded-2xl border ${isSelected ? 'border-purple-500 ring-2 ring-purple-400' : 'border-slate-200/80'} shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-all relative ${isBatchMode ? 'cursor-pointer' : ''}">
+            
+            <!-- 批次勾選框 (批次模式下常駐，非批次隱藏) -->
+            ${isBatchMode ? `
+              <div class="absolute top-2 right-2 z-20">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center transition-colors shadow-sm ${isSelected ? 'bg-purple-600 text-white' : 'bg-white/90 text-slate-300 border border-slate-300'}">
+                  <i class="fa-solid fa-check text-xs ${isSelected ? 'opacity-100' : 'opacity-0'}"></i>
+                </div>
               </div>
-              <p class="text-[11px] text-purple-600 font-medium line-clamp-1 mb-2">${card.group || '未分類'}</p>
-              
-              <div class="flex flex-wrap gap-1 mb-2">
-                ${card.channel ? `<span class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">${card.channel}</span>` : ''}
-                ${card.size ? `<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">${card.size}</span>` : ''}
-                ${card.category ? `<span class="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded">${card.category}</span>` : ''}
-              </div>
+            ` : ''}
+
+            <!-- 圖片與上方數量標籤 -->
+            <div class="relative aspect-photocard bg-slate-100 overflow-hidden">
+              ${card.image ? 
+                `<img src="${card.image}" alt="${card.name}" class="w-full h-full object-cover">` : 
+                `<div class="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1"><i class="fa-regular fa-image text-3xl"></i><span class="text-[10px]">無相片</span></div>`
+              }
+              <span class="absolute top-2 left-2 bg-slate-900/70 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded-full z-10">
+                x${card.quantity || 1}
+              </span>
+              ${card.price ? `<span class="absolute bottom-2 left-2 bg-emerald-600/85 backdrop-blur-md text-white text-[10px] font-medium px-2 py-0.5 rounded-md z-10">$${card.price}</span>` : ''}
             </div>
 
-            <!-- 張數快速調整與編輯/刪除 -->
-            <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-              <div class="flex items-center gap-1">
-                <button type="button" onclick="adjustQty('${card.id}', -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">-</button>
-                <span class="text-xs font-semibold px-1">${card.quantity || 1}</span>
-                <button type="button" onclick="adjustQty('${card.id}', 1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">+</button>
+            <!-- 卡片資訊與操作 -->
+            <div class="p-3 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-start justify-between gap-1 mb-1">
+                  <h4 class="font-bold text-xs sm:text-sm text-slate-800 line-clamp-1" title="${card.name}">${card.name}</h4>
+                </div>
+                <p class="text-[11px] text-purple-600 font-semibold line-clamp-1 mb-2">${card.group || '未分類'}</p>
+                
+                <div class="flex flex-wrap gap-1 mb-2">
+                  ${card.channel ? `<span class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">${card.channel}</span>` : ''}
+                  ${card.size ? `<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">${card.size}</span>` : ''}
+                  ${card.category ? `<span class="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded">${card.category}</span>` : ''}
+                </div>
               </div>
-              <div class="flex items-center gap-2 text-slate-400">
-                <button type="button" onclick="editCard('${card.id}')" class="hover:text-purple-600"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button type="button" onclick="deleteCard('${card.id}')" class="hover:text-rose-500"><i class="fa-solid fa-trash-can"></i></button>
+
+              <!-- 張數快速調整與編輯/刪除 (批次模式下停用防誤觸) -->
+              <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-1">
+                  <button type="button" onclick="event.stopPropagation(); adjustQty('${card.id}', -1)" ${isBatchMode ? 'disabled' : ''} class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs disabled:opacity-40">-</button>
+                  <span class="text-xs font-semibold px-1">${card.quantity || 1}</span>
+                  <button type="button" onclick="event.stopPropagation(); adjustQty('${card.id}', 1)" ${isBatchMode ? 'disabled' : ''} class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs disabled:opacity-40">+</button>
+                </div>
+                <div class="flex items-center gap-2 text-slate-400">
+                  <button type="button" onclick="event.stopPropagation(); editCard('${card.id}')" ${isBatchMode ? 'disabled' : ''} class="hover:text-purple-600 disabled:opacity-40"><i class="fa-solid fa-pen-to-square"></i></button>
+                  <button type="button" onclick="event.stopPropagation(); deleteCard('${card.id}')" ${isBatchMode ? 'disabled' : ''} class="hover:text-rose-500 disabled:opacity-40"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     // --- 增減張數快捷鍵 ---
@@ -707,7 +990,7 @@
       renderCards();
     };
 
-    // --- 刪除小卡 ---
+    // --- 刪除單張小卡 ---
     window.deleteCard = async function(id) {
       if (confirm('確定要刪除這張小卡紀錄嗎？')) {
         await dbDeleteCard(id);
@@ -716,7 +999,7 @@
       }
     };
 
-    // --- 編輯小卡 ---
+    // --- 編輯單張小卡 ---
     window.editCard = function(id) {
       const card = cardsList.find(c => c.id === id);
       if (!card) return;
@@ -724,7 +1007,6 @@
       document.getElementById('modalTitle').textContent = '✏️ 編輯小卡紀錄';
       document.getElementById('cardNameInput').value = card.name || '';
       
-      // 分類
       const gSel = document.getElementById('groupSelect');
       if ([...gSel.options].some(o => o.value === card.group)) {
         gSel.value = card.group;
@@ -734,7 +1016,6 @@
         document.getElementById('groupCustomInput').value = card.group || '';
       }
 
-      // 通路
       const chSel = document.getElementById('channelSelect');
       if ([...chSel.options].some(o => o.value === card.channel)) {
         chSel.value = card.channel;
@@ -888,7 +1169,6 @@
       e.preventDefault();
       const editId = document.getElementById('editCardId').value;
       
-      // 分類自定義處理
       const customGroup = document.getElementById('groupCustomInput').value.trim();
       let chosenGroup = customGroup || document.getElementById('groupSelect').value;
       if (customGroup && !tagsData.groups.includes(customGroup)) {
@@ -896,7 +1176,6 @@
         saveTagsData();
       }
 
-      // 通路自定義處理
       const customCh = document.getElementById('channelCustomInput').value.trim();
       let chosenChannel = customCh || document.getElementById('channelSelect').value;
       if (customCh && !tagsData.channels.includes(customCh)) {
@@ -999,6 +1278,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       renderTagFilters();
       renderModalSelects();
+      renderBatchSelects();
       cardsList = await dbGetAllCards();
       renderCards();
     });
